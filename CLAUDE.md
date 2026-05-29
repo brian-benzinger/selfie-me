@@ -24,15 +24,25 @@ Building requires the Android SDK (compileSdk 35 / latest build-tools) and netwo
 ./gradlew assembleDebug      # build debug APK
 ./gradlew assembleRelease    # build release APK (proguard configured but minifyEnabled=false)
 ./gradlew installDebug       # install debug build on a connected device/emulator
-./gradlew test               # run JVM unit tests
+./gradlew test               # run the JVM (Robolectric) unit tests
+./gradlew lint               # run Android Lint
 ./gradlew clean
 ```
 
-There are currently **no test sources** in the repo (only the `junit:junit:4.13.2` dependency is declared), so `test` has nothing to run. If adding tests, create `app/src/test/java/...` for JVM unit tests.
+Run a single test class or method via Gradle's test filter:
+
+```bash
+./gradlew test --tests "com.benzinger.selfieme.storage.SelfieStorageTest"
+./gradlew test --tests "com.benzinger.selfieme.SelfieMainActivityTest.onCreate_schedulesRepeatingTwoMinuteAlarm"
+```
+
+### Testing
+
+Unit tests live in `app/src/test/java/...` and run on **Robolectric** (the Android framework on the JVM — no emulator/device needed), driven by the plain `./gradlew test` task. `testOptions.unitTests.includeAndroidResources = true` in `app/build.gradle` is required for Robolectric to see merged resources/manifest. The suite covers all four classes plus the `SelfieStorage` helper; activity tests use `Robolectric.buildActivity(...)` and shadow objects (`ShadowAlarmManager`, `ShadowNotificationManager`, `ShadowPackageManager`) to assert on the alarm, the notification, and the camera / full-screen intents. The **CI workflow** (`.github/workflows/android.yml`) runs `assembleDebug`, `test`, and `lint` on every PR — note these only build on a runner with the Android SDK + Google Maven access, not in a sandboxed dev container.
 
 ## Architecture
 
-The entire app lives under `app/src/main/java/com/benzinger/selfieme/` and is built from four classes plus standard Android resources. The flow centers on capturing images to app-private external storage and reading them back into a grid.
+The entire app lives under `app/src/main/java/com/benzinger/selfieme/` and is built from four classes plus a small storage helper and standard Android resources. The flow centers on capturing images to app-private external storage and reading them back into a grid.
 
 - **`SelfieMainActivity`** — the launcher activity and the hub of the app. On create it:
   1. Calls `loadPics()` to scan `getExternalFilesDir(null)` and build a `List<Uri>` of existing selfie files (as `file://` URIs).
@@ -45,6 +55,8 @@ The entire app lives under `app/src/main/java/com/benzinger/selfieme/` and is bu
 - **`adapters/ImageAdapter`** — a `BaseAdapter` over the `List<Uri>`. It builds/recycles `ImageView`s for the grid (fixed 100x100, center-crop) via `setImageURI`. The activity mutates the *same* list instance and calls `notifyDataSetChanged()`; the adapter holds the list by reference, so add/remove happens in the activity, not the adapter.
 
 - **`FullScreenPicActivity`** — displays one selfie full-screen. It receives the file path via the `SelfieMainActivity.FILENAME_EXTRA` intent extra and loads it with `Drawable.createFromPath`.
+
+- **`storage/SelfieStorage`** — a stateless helper holding the pure file-system logic extracted from the activity: `buildImageFileName(Date)` (the `selfie_<timestamp>_` naming), `loadSelfies(dir, into)` (scan → dedup `file://` URIs), and `deleteSelfie(dir, uri)` (file-scheme delete). `SelfieMainActivity` delegates `loadPics()`, `createImageFile()`, and `deleteImageFile()` to it. This is the seam that lets the storage logic be unit tested without driving the activity — keep new file/URI logic here rather than inlining it in the activity.
 
 ### Key contracts to preserve
 

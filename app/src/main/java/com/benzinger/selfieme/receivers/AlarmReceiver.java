@@ -14,8 +14,8 @@ import com.benzinger.selfieme.SelfieMainActivity;
 
 public class AlarmReceiver extends BroadcastReceiver {
 
-    private static final String CHANNEL_ID = "selfie_reminders";
-    private static final int NOTIFICATION_ID = 1;
+    public static final String CHANNEL_ID = "selfie_reminders";
+    public static final int NOTIFICATION_ID = 1;
 
     @Override
     public void onReceive(Context context, Intent intent) {
