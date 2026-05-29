@@ -23,6 +23,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
 
+import androidx.activity.result.ActivityResult;
 import androidx.test.core.app.ApplicationProvider;
 
 import com.benzinger.selfieme.adapters.ImageAdapter;
@@ -44,9 +45,6 @@ import java.io.IOException;
 /** Lifecycle / wiring tests for {@link SelfieMainActivity} driven by Robolectric. */
 @RunWith(RobolectricTestRunner.class)
 public class SelfieMainActivityTest {
-
-    // Mirrors the private SelfieMainActivity.REQUEST_IMAGE_CAPTURE.
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
 
     // A real (tiny) PNG so the GridView can decode a seeded selfie without error.
     private static final byte[] ONE_PX_PNG = java.util.Base64.getDecoder().decode(
@@ -146,7 +144,7 @@ public class SelfieMainActivityTest {
         int before = gridView.getAdapter().getCount();
 
         activity.currentFile = newCapturedFile(activity);
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
 
         assertEquals(before + 1, gridView.getAdapter().getCount());
     }
@@ -157,10 +155,10 @@ public class SelfieMainActivityTest {
         GridView gridView = activity.findViewById(R.id.gridview);
 
         activity.currentFile = newCapturedFile(activity);
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
         int afterFirst = gridView.getAdapter().getCount();
         // Same currentFile delivered again must be ignored (already in the list).
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
 
         assertEquals(afterFirst, gridView.getAdapter().getCount());
     }
@@ -170,7 +168,7 @@ public class SelfieMainActivityTest {
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);
         // No prior capture, so currentFile is null.
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
         assertEquals(0, gridView.getAdapter().getCount());
     }
 
@@ -183,7 +181,7 @@ public class SelfieMainActivityTest {
         activity.currentFile = file;
         assertTrue(file.exists());
 
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_CANCELED, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_CANCELED, null));
 
         assertFalse("cancel must delete the pre-created file", file.exists());
         assertEquals(0, gridView.getAdapter().getCount());
@@ -194,7 +192,7 @@ public class SelfieMainActivityTest {
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);
         // currentFile is null: the delete guard must short-circuit without error.
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_CANCELED, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_CANCELED, null));
         assertEquals(0, gridView.getAdapter().getCount());
     }
 
@@ -203,16 +201,8 @@ public class SelfieMainActivityTest {
         SelfieMainActivity activity = createActivity();
         // currentFile set but never created: the exists() guard must short-circuit cleanly.
         activity.currentFile = new File(activity.getExternalFilesDir(null), "ghost.jpg");
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_CANCELED, null);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_CANCELED, null));
         assertNotNull(activity);
-    }
-
-    @Test
-    public void unrelatedActivityResult_isIgnored() {
-        SelfieMainActivity activity = createActivity();
-        GridView gridView = activity.findViewById(R.id.gridview);
-        activity.onActivityResult(999, Activity.RESULT_OK, null);
-        assertEquals(0, gridView.getAdapter().getCount());
     }
 
     @Test

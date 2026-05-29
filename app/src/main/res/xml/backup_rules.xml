@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+   Full-backup rules for API < 31. Empty content backs up all eligible app data
+   (the default), which satisfies lint's AllowBackup advisory. Add <exclude>
+   entries here to keep specific files/dirs out of cloud backups.
+   https://developer.android.com/guide/topics/data/autobackup
+-->
+<full-backup-content>
+</full-backup-content>

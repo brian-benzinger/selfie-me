@@ -18,6 +18,9 @@ import android.widget.AdapterView;
 import android.widget.GridView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
@@ -131,7 +134,7 @@ public class SelfieMainActivity extends AppCompatActivity {
                 Uri contentUri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", currentFile);
                 takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, contentUri);
                 takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+                cameraLauncher.launch(takePictureIntent);
             }
         }
     }
@@ -155,10 +158,12 @@ public class SelfieMainActivity extends AppCompatActivity {
      *  Callback function once camera has been closed
      *  (either successful shot, or cancelled)
      */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+    /**
+     * Result callback for the camera capture launcher (replaces onActivityResult).
+     * Package-private so unit tests can invoke it directly.
+     */
+    void onCaptureResult(ActivityResult result) {
+        if (result.getResultCode() == RESULT_OK) {
             Toast.makeText(this, "You've been Selfied!", Toast.LENGTH_SHORT).show();
             if (currentFile != null) {
                 Uri uri = Uri.fromFile(currentFile);
@@ -167,7 +172,7 @@ public class SelfieMainActivity extends AppCompatActivity {
                     imageAdapter.notifyDataSetChanged();
                 }
             }
-        } else if (requestCode == REQUEST_IMAGE_CAPTURE) {
+        } else {
             Toast.makeText(this, "Cancelled the shot", Toast.LENGTH_SHORT).show();
             if (currentFile != null && currentFile.exists()) {
                 currentFile.delete();
