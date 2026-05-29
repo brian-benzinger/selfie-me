@@ -51,7 +51,7 @@ public class AlarmReceiverTest {
     public void onReceive_createsReminderChannel() {
         new AlarmReceiver().onReceive(context, new Intent());
 
-        ShadowNotificationManager shadow = shadowOf(notificationManager);
-        assertNotNull(shadow.getNotificationChannel(AlarmReceiver.CHANNEL_ID));
+        // Query the real (public) NotificationManager API — the shadow's accessor is protected.
+        assertNotNull(notificationManager.getNotificationChannel(AlarmReceiver.CHANNEL_ID));
     }
 }
