@@ -42,7 +42,7 @@ public class SelfieMainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_POST_NOTIFICATIONS = 2;
     private static final int TWO_MINS = 60 * 1000 * 2;
-    private List<Uri> picturePaths;
+    private final List<Uri> picturePaths = new ArrayList<>();
     private File currentFile;
     private ImageAdapter imageAdapter;
     private int selectedPosition;
@@ -112,15 +112,8 @@ public class SelfieMainActivity extends AppCompatActivity {
      * Initially load all pics in the private storage directory into the list
      */
     private void loadPics() {
-        if (picturePaths == null) {
-            picturePaths = new ArrayList<>();
-        }
-        File storageDir = getExternalFilesDir(null);
-        if (storageDir == null) {
-            Toast.makeText(this, "Why is ExternalFileDir null?", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        SelfieStorage.loadSelfies(storageDir, picturePaths);
+        // SelfieStorage tolerates a null directory (returns the list unchanged).
+        SelfieStorage.loadSelfies(getExternalFilesDir(null), picturePaths);
     }
 
     /**

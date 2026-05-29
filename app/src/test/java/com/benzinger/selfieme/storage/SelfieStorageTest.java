@@ -2,6 +2,7 @@ package com.benzinger.selfieme.storage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import android.net.Uri;
@@ -69,6 +70,13 @@ public class SelfieStorageTest {
     }
 
     @Test
+    public void loadSelfies_nonDirectoryYieldsEmptyList() throws IOException {
+        // listFiles() returns null for a regular file, exercising the children == null branch.
+        File notADir = tmp.newFile("regular.txt");
+        assertTrue(SelfieStorage.loadSelfies(notADir, null).isEmpty());
+    }
+
+    @Test
     public void deleteSelfie_deletesExistingFileUri() throws IOException {
         File dir = tmp.newFolder();
         File file = new File(dir, "selfie_x.jpg");
@@ -96,5 +104,20 @@ public class SelfieStorageTest {
     @Test
     public void deleteSelfie_nullUriReturnsFalse() throws IOException {
         assertFalse(SelfieStorage.deleteSelfie(tmp.newFolder(), null));
+    }
+
+    @Test
+    public void deleteSelfie_fileUriWithoutSegmentReturnsFalse() throws IOException {
+        // "file:///" has the file scheme but a null last path segment.
+        assertFalse(SelfieStorage.deleteSelfie(tmp.newFolder(), Uri.parse("file:///")));
+    }
+
+    @Test
+    public void privateConstructor_isInvocable() throws Exception {
+        // SelfieStorage is a stateless utility; exercising the hidden constructor keeps it covered.
+        java.lang.reflect.Constructor<SelfieStorage> constructor =
+                SelfieStorage.class.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        assertNotNull(constructor.newInstance());
     }
 }

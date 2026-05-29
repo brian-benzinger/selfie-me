@@ -1,5 +1,10 @@
 plugins {
     id 'com.android.application'
+    id 'jacoco'
+}
+
+jacoco {
+    toolVersion = '0.8.12'
 }
 
 android {
@@ -14,6 +19,10 @@ android {
         versionName "1.0"
     }
     buildTypes {
+        debug {
+            // Generate JaCoCo execution data from the JVM (Robolectric) unit tests.
+            enableUnitTestCoverage true
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -40,4 +49,68 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.robolectric:robolectric:4.14.1'
     testImplementation 'androidx.test:core:1.6.1'
+}
+
+// ---------------------------------------------------------------------------
+// Code coverage (JaCoCo) over the debug JVM unit tests.
+//   ./gradlew jacocoTestReport               -> HTML/XML report
+//   ./gradlew jacocoTestCoverageVerification -> fails build below thresholds
+// `check` (and therefore CI) runs the verification.
+// ---------------------------------------------------------------------------
+
+// Generated / framework glue that JaCoCo cannot meaningfully cover.
+def coverageExclusions = [
+        '**/R.class',
+        '**/R$*.class',
+        '**/BuildConfig.*',
+        '**/Manifest*.*',
+        '**/*_Impl*.*'
+]
+
+def coverageClassDirs = {
+    fileTree(dir: new File(layout.buildDirectory.get().asFile, 'intermediates/javac/debug/classes'),
+            excludes: coverageExclusions)
+}
+
+def coverageExecData = {
+    fileTree(dir: layout.buildDirectory.get().asFile, includes: [
+            'jacoco/testDebugUnitTest.exec',
+            'outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec'
+    ])
+}
+
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn 'testDebugUnitTest'
+    reports {
+        xml.required = true
+        html.required = true
+    }
+    sourceDirectories.from = files(['src/main/java'])
+    classDirectories.from = files(coverageClassDirs())
+    executionData.from = coverageExecData()
+}
+
+tasks.register('jacocoTestCoverageVerification', JacocoCoverageVerification) {
+    dependsOn 'testDebugUnitTest'
+    sourceDirectories.from = files(['src/main/java'])
+    classDirectories.from = files(coverageClassDirs())
+    executionData.from = coverageExecData()
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.98
+            }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.90
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn 'jacocoTestCoverageVerification'
 }
