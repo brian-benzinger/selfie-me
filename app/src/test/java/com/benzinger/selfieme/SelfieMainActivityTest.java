@@ -15,7 +15,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.content.pm.ResolveInfo;
+import android.graphics.drawable.Drawable;
 import android.provider.MediaStore;
+import android.view.ContextMenu;
+import android.view.View;
 import android.widget.AdapterView;
 import android.widget.GridView;
 
@@ -214,7 +217,7 @@ public class SelfieMainActivityTest {
         assertEquals(1, gridView.getAdapter().getCount());
 
         // Long-press selects position 0...
-        RoboMenu menu = new RoboMenu(activity);
+        FakeContextMenu menu = new FakeContextMenu(activity);
         AdapterView.AdapterContextMenuInfo info = new AdapterView.AdapterContextMenuInfo(gridView, 0, 0);
         activity.onCreateContextMenu(menu, gridView, info);
         // ...then tapping Delete removes it and deletes the file.
@@ -263,5 +266,46 @@ public class SelfieMainActivityTest {
     @Config(sdk = 26)
     public void onCreate_belowTiramisu_doesNotRequestNotificationPermission() {
         assertNotNull(createActivity());
+    }
+
+    /**
+     * {@link RoboMenu} only implements {@link android.view.Menu}; {@code onCreateContextMenu}
+     * needs a {@link ContextMenu}. This fake adds the no-op header methods so the activity's
+     * menu inflation runs against a real menu instance.
+     */
+    private static class FakeContextMenu extends RoboMenu implements ContextMenu {
+        FakeContextMenu(Context context) {
+            super(context);
+        }
+
+        @Override
+        public ContextMenu setHeaderTitle(int titleRes) {
+            return this;
+        }
+
+        @Override
+        public ContextMenu setHeaderTitle(CharSequence title) {
+            return this;
+        }
+
+        @Override
+        public ContextMenu setHeaderIcon(int iconRes) {
+            return this;
+        }
+
+        @Override
+        public ContextMenu setHeaderIcon(Drawable icon) {
+            return this;
+        }
+
+        @Override
+        public ContextMenu setHeaderView(View view) {
+            return this;
+        }
+
+        @Override
+        public void clearHeader() {
+            // no-op
+        }
     }
 }
