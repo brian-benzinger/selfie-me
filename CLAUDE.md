@@ -4,19 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-selfie-me is a single-module Android application that periodically nags the user (via a repeating notification) to take a front-camera selfie, then displays all captured selfies in a grid. It was originally written as a project for the Android Programming Coursera course and uses an older Android toolchain (see Toolchain below).
+selfie-me is a single-module Android application that periodically nags the user (via a repeating notification) to take a front-camera selfie, then displays all captured selfies in a grid. It was originally written as a project for the Android Programming Coursera course and has since been migrated to a modern Android toolchain (see Toolchain below).
 
 ## Toolchain & versions
 
-This project is pinned to a legacy stack — do **not** assume modern Gradle/Android conventions:
+- **Android Gradle Plugin 8.7.3**, **Gradle 8.9** (see `gradle/wrapper/gradle-wrapper.properties`)
+- **compileSdk 35**, **minSdk 26**, **targetSdk 35**; Java 17 source/target (`compileOptions`)
+- **AndroidX** (`androidx.appcompat`, `androidx.core`) plus **Material Components** (`com.google.android.material`) — *not* the old `com.android.support` libraries
+- Dependencies resolve from **google()** + **mavenCentral()**, configured centrally in `settings.gradle` via `pluginManagement` and `dependencyResolutionManagement` (the old per-module `repositories {}` / jcenter setup is gone)
+- Uses modern Gradle configurations: `implementation` / `testImplementation` (not `compile` / `testCompile`)
+- The module is configured with `namespace 'com.benzinger.selfieme'` in `app/build.gradle`; the `package` attribute is intentionally absent from `AndroidManifest.xml` (required by AGP 8)
+- AndroidX is enabled via `android.useAndroidX=true` in `gradle.properties`
 
-- **Android Gradle Plugin 1.3.0**, **Gradle 2.8** (see `gradle/wrapper/gradle-wrapper.properties`)
-- **compileSdkVersion 23**, **buildToolsVersion 23.0.1**, **minSdkVersion 18**, **targetSdkVersion 23**
-- Dependencies resolved from **jcenter** (now defunct — builds may fail to resolve dependencies without a mirror/cached artifacts)
-- Uses the old `com.android.support` support libraries (appcompat-v7, design, support-v4), not AndroidX
-- Gradle config uses the deprecated `compile`/`testCompile` configurations, not `implementation`/`testImplementation`
-
-Because of the jcenter dependency and the old AGP, this project generally requires Android Studio with matching SDK components to build reliably.
+Building requires the Android SDK (compileSdk 35 / latest build-tools) and network access to **Google's Maven repo** (`dl.google.com`); AGP and all AndroidX/Material artifacts are published only there. JDK 17+ is required for AGP 8.
 
 ## Build & test commands
 
@@ -28,29 +28,31 @@ Because of the jcenter dependency and the old AGP, this project generally requir
 ./gradlew clean
 ```
 
-There are currently **no test sources** in the repo (only the `junit:junit:4.12` dependency is declared), so `test` has nothing to run. If adding tests, create `app/src/test/java/...` for JVM unit tests.
+There are currently **no test sources** in the repo (only the `junit:junit:4.13.2` dependency is declared), so `test` has nothing to run. If adding tests, create `app/src/test/java/...` for JVM unit tests.
 
 ## Architecture
 
 The entire app lives under `app/src/main/java/com/benzinger/selfieme/` and is built from four classes plus standard Android resources. The flow centers on capturing images to app-private external storage and reading them back into a grid.
 
 - **`SelfieMainActivity`** — the launcher activity and the hub of the app. On create it:
-  1. Calls `loadPics()` to scan `getExternalFilesDir(null)` and build a `List<Uri>` of existing selfie files.
+  1. Calls `loadPics()` to scan `getExternalFilesDir(null)` and build a `List<Uri>` of existing selfie files (as `file://` URIs).
   2. Wires up a `GridView` backed by `ImageAdapter`, with a tap opening `FullScreenPicActivity` and a long-press context menu for delete.
-  3. Calls `createAlarm()` to register a repeating `AlarmManager` broadcast.
-  - Camera capture uses the standard `MediaStore.ACTION_IMAGE_CAPTURE` intent pattern: `createImageFile()` pre-creates a temp `.jpg` (named `selfie_<timestamp>_`) in external files dir, passes its `Uri` as `EXTRA_OUTPUT`, and `onActivityResult` either keeps the file (success) or deletes the pre-created file (cancel). This pre-create-then-delete pattern is intentional — don't "simplify" it away.
+  3. Requests the `POST_NOTIFICATIONS` runtime permission (API 33+) and calls `createAlarm()` to register a repeating `AlarmManager` broadcast.
+  - Camera capture uses the `MediaStore.ACTION_IMAGE_CAPTURE` intent pattern: `createImageFile()` pre-creates a temp `.jpg` (named `selfie_<timestamp>_`) in the external files dir and stores it in the `currentFile` field. The file is shared with the camera app as a **FileProvider `content://` URI** (`MediaStore.EXTRA_OUTPUT` + `FLAG_GRANT_WRITE_URI_PERMISSION`) — handing a raw `file://` URI to another app throws `FileUriExposedException` on modern Android. `onActivityResult` either keeps the file and adds `Uri.fromFile(currentFile)` to the list (success) or deletes the pre-created file (cancel). This pre-create-then-delete pattern is intentional — don't "simplify" it away. Note the split: the camera intent uses a `content://` URI, but the list/display path uses `file://` URIs throughout (see contracts below).
 
-- **`receivers/AlarmReceiver`** — a `BroadcastReceiver` (registered in `AndroidManifest.xml`) that fires on the custom action and posts the "Time For A New Selfie!" notification, whose content intent reopens `SelfieMainActivity`.
+- **`receivers/AlarmReceiver`** — a `BroadcastReceiver` (registered in `AndroidManifest.xml`, `exported="false"`) that posts the "Time For A New Selfie!" notification, whose content intent reopens `SelfieMainActivity`. It creates the notification channel (`selfie_reminders`, mandatory at minSdk 26) before posting.
 
-- **`adapters/ImageAdapter`** — a `BaseAdapter` over the `List<Uri>`. It builds/recycles `ImageView`s for the grid (fixed 100x100, center-crop). The activity mutates the *same* list instance and calls `notifyDataSetChanged()`; the adapter holds the list by reference, so add/remove happens in the activity, not the adapter.
+- **`adapters/ImageAdapter`** — a `BaseAdapter` over the `List<Uri>`. It builds/recycles `ImageView`s for the grid (fixed 100x100, center-crop) via `setImageURI`. The activity mutates the *same* list instance and calls `notifyDataSetChanged()`; the adapter holds the list by reference, so add/remove happens in the activity, not the adapter.
 
 - **`FullScreenPicActivity`** — displays one selfie full-screen. It receives the file path via the `SelfieMainActivity.FILENAME_EXTRA` intent extra and loads it with `Drawable.createFromPath`.
 
 ### Key contracts to preserve
 
-- The custom broadcast action string `com.benzinger.selfieme.receivers.NOTIFICATION_ALARM` is duplicated as `SelfieMainActivity.ACTION` and in the manifest `<receiver>` intent-filter — keep them in sync.
+- The list of selfies and the display path use **`file://` URIs** (`Uri.fromFile`): `loadPics()` produces them, `ImageAdapter.setImageURI` renders them, `FullScreenPicActivity` reads `Uri.getPath()`, and `deleteImageFile` matches on the `"file"` scheme. The camera's `content://` URI (via FileProvider) is used *only* transiently for `EXTRA_OUTPUT`. Keep these consistent if you touch the capture or display flow.
+- The FileProvider authority is `"${applicationId}.fileprovider"`, declared in `AndroidManifest.xml` and constructed as `getPackageName() + ".fileprovider"` in `SelfieMainActivity.openCamera()` — keep them in sync. Its exposed paths are in `res/xml/file_paths.xml` (`<external-files-path>`, which maps to `getExternalFilesDir(null)`).
 - The intent extra key is the constant `SelfieMainActivity.FILENAME_EXTRA`; both activities reference it.
-- Photos are stored in app-private external storage (`getExternalFilesDir(null)`), which is why the `WRITE_EXTERNAL_STORAGE` permission is capped at `maxSdkVersion="18"`. The front camera is declared **required** via `<uses-feature>`.
+- The alarm uses an **explicit** `Intent(this, AlarmReceiver.class)` (implicit broadcasts to manifest receivers are restricted on modern Android), and every `PendingIntent` is created with `FLAG_IMMUTABLE` (required from API 31+). Preserve both.
+- Photos are stored in app-private external storage (`getExternalFilesDir(null)`); no storage permission is needed (the old `WRITE_EXTERNAL_STORAGE` declaration was removed when minSdk moved past 18). The front camera is declared **required** via `<uses-feature>`.
 
 ### Known discrepancy
 
