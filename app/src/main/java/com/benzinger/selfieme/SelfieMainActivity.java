@@ -24,14 +24,13 @@ import androidx.core.content.FileProvider;
 
 import com.benzinger.selfieme.adapters.ImageAdapter;
 import com.benzinger.selfieme.receivers.AlarmReceiver;
+import com.benzinger.selfieme.storage.SelfieStorage;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 /**
  * Main activity setting up the gridview which displays all selfies taken
@@ -117,16 +116,11 @@ public class SelfieMainActivity extends AppCompatActivity {
             picturePaths = new ArrayList<>();
         }
         File storageDir = getExternalFilesDir(null);
-        if (storageDir != null && storageDir.listFiles() != null) {
-            for (File child : storageDir.listFiles()) {
-                Uri uri = Uri.fromFile(child);
-                if (!picturePaths.contains(uri)) {
-                    picturePaths.add(uri);
-                }
-            }
-        } else {
+        if (storageDir == null) {
             Toast.makeText(this, "Why is ExternalFileDir null?", Toast.LENGTH_SHORT).show();
+            return;
         }
+        SelfieStorage.loadSelfies(storageDir, picturePaths);
     }
 
     /**
@@ -160,10 +154,9 @@ public class SelfieMainActivity extends AppCompatActivity {
      * @return the File object
      */
     private File createImageFile() throws IOException {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
-        String imageFileName = "selfie_" + timeStamp + "_";
+        String imageFileName = SelfieStorage.buildImageFileName(new Date());
         File storageDir = getExternalFilesDir(null);
-        return File.createTempFile(imageFileName, ".jpg", storageDir);
+        return File.createTempFile(imageFileName, SelfieStorage.FILE_SUFFIX, storageDir);
     }
 
     /**
@@ -196,15 +189,7 @@ public class SelfieMainActivity extends AppCompatActivity {
      * @return true if deleted, false if not
      */
     private boolean deleteImageFile(Uri uri) {
-        String scheme = uri.getScheme(); //delete the file created
-        if ("file".equals(scheme)) {
-            String fileName = uri.getLastPathSegment();
-            File file = new File(getExternalFilesDir(null), fileName);
-            if (file.exists()) {
-                return file.delete();
-            }
-        }
-        return false;
+        return SelfieStorage.deleteSelfie(getExternalFilesDir(null), uri);
     }
 
     /**
