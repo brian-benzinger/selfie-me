@@ -42,7 +42,7 @@ public class SelfieMainActivity extends AppCompatActivity {
     private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_POST_NOTIFICATIONS = 2;
     private static final int TWO_MINS = 60 * 1000 * 2;
-    private final List<Uri> picturePaths = new ArrayList<>();
+    final List<Uri> picturePaths = new ArrayList<>(); // package-private for tests
     File currentFile; // package-private for tests
     private ImageAdapter imageAdapter;
     private int selectedPosition;
