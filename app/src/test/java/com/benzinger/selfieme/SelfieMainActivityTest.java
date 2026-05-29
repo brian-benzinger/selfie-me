@@ -39,6 +39,7 @@ import org.robolectric.shadows.ShadowPackageManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 
 /** Lifecycle / wiring tests for {@link SelfieMainActivity} driven by Robolectric. */
 @RunWith(RobolectricTestRunner.class)
@@ -46,6 +47,10 @@ public class SelfieMainActivityTest {
 
     // Mirrors the private SelfieMainActivity.REQUEST_IMAGE_CAPTURE.
     private static final int REQUEST_IMAGE_CAPTURE = 1;
+
+    // A real (tiny) PNG so the GridView can decode a seeded selfie without error.
+    private static final byte[] ONE_PX_PNG = java.util.Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==");
 
     private SelfieMainActivity createActivity() {
         return Robolectric.buildActivity(SelfieMainActivity.class).setup().get();
@@ -60,10 +65,17 @@ public class SelfieMainActivityTest {
         shadowPm.addResolveInfoForIntent(new Intent(MediaStore.ACTION_IMAGE_CAPTURE), resolveInfo);
     }
 
-    private File[] selfieFiles(SelfieMainActivity activity) {
-        File dir = activity.getExternalFilesDir(null);
-        File[] files = dir != null ? dir.listFiles() : null;
-        return files != null ? files : new File[0];
+    /** Pre-create a captured-photo file in the activity's external files dir. */
+    private File newCapturedFile(SelfieMainActivity activity) throws IOException {
+        return File.createTempFile("selfie_test_", ".jpg", activity.getExternalFilesDir(null));
+    }
+
+    /** Seed an existing decodable selfie so loadPics() populates the grid. */
+    private File seedSelfie(String name) throws IOException {
+        File dir = ApplicationProvider.getApplicationContext().getExternalFilesDir(null);
+        File file = new File(dir, name);
+        java.nio.file.Files.write(file.toPath(), ONE_PX_PNG);
+        return file;
     }
 
     @Test
@@ -103,8 +115,12 @@ public class SelfieMainActivityTest {
     @Test
     public void tappingCameraMenu_withNoCameraApp_startsNothing() {
         SelfieMainActivity activity = createActivity();
-        // No camera app registered: resolveActivity() returns null, so nothing is launched.
+        // Resolve ACTION_IMAGE_CAPTURE to nothing so resolveActivity() returns null.
+        shadowOf(activity.getPackageManager()).setResolveInfosForIntent(
+                new Intent(MediaStore.ACTION_IMAGE_CAPTURE), Collections.<ResolveInfo>emptyList());
+
         shadowOf(activity).clickMenuItem(R.id.action_camera);
+
         assertNull(shadowOf(activity).getNextStartedActivityForResult());
     }
 
@@ -116,55 +132,73 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void captureSuccess_addsPhotoToGrid() {
+    public void createImageFile_returnsFileInStorageDir() {
         SelfieMainActivity activity = createActivity();
-        registerCameraApp(activity);
+        File dir = activity.getExternalFilesDir(null);
+
+        File created = activity.createImageFile(dir);
+
+        assertNotNull(created);
+        assertTrue(created.exists());
+        assertEquals(dir, created.getParentFile());
+    }
+
+    @Test
+    public void createImageFile_returnsNullWhenDirectoryUnusable() {
+        SelfieMainActivity activity = createActivity();
+        // A non-existent directory makes File.createTempFile throw IOException, which is swallowed.
+        File badDir = new File(activity.getExternalFilesDir(null), "missing-subdir");
+        assertNull(activity.createImageFile(badDir));
+    }
+
+    @Test
+    public void captureSuccess_addsPhotoToGrid() throws IOException {
+        SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);
         int before = gridView.getAdapter().getCount();
 
-        shadowOf(activity).clickMenuItem(R.id.action_camera); // creates temp file, sets currentFile
+        activity.currentFile = newCapturedFile(activity);
         activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
 
         assertEquals(before + 1, gridView.getAdapter().getCount());
     }
 
     @Test
-    public void captureCancelled_deletesPreCreatedFile() {
-        SelfieMainActivity activity = createActivity();
-        registerCameraApp(activity);
-        GridView gridView = activity.findViewById(R.id.gridview);
-
-        shadowOf(activity).clickMenuItem(R.id.action_camera);
-        assertEquals("openCamera pre-creates one temp file", 1, selfieFiles(activity).length);
-
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_CANCELED, null);
-
-        assertEquals("cancel must delete the pre-created file", 0, selfieFiles(activity).length);
-        assertEquals(0, gridView.getAdapter().getCount());
-    }
-
-    @Test
-    public void captureSuccess_withoutCurrentFile_addsNothing() {
+    public void captureSuccess_doesNotAddSamePhotoTwice() throws IOException {
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);
-        // No prior openCamera(), so currentFile is null.
-        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
-        assertEquals(0, gridView.getAdapter().getCount());
-    }
 
-    @Test
-    public void captureSuccess_doesNotAddSamePhotoTwice() {
-        SelfieMainActivity activity = createActivity();
-        registerCameraApp(activity);
-        GridView gridView = activity.findViewById(R.id.gridview);
-
-        shadowOf(activity).clickMenuItem(R.id.action_camera);
+        activity.currentFile = newCapturedFile(activity);
         activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
         int afterFirst = gridView.getAdapter().getCount();
         // Same currentFile delivered again must be ignored (already in the list).
         activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
 
         assertEquals(afterFirst, gridView.getAdapter().getCount());
+    }
+
+    @Test
+    public void captureSuccess_withoutCurrentFile_addsNothing() {
+        SelfieMainActivity activity = createActivity();
+        GridView gridView = activity.findViewById(R.id.gridview);
+        // No prior capture, so currentFile is null.
+        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_OK, null);
+        assertEquals(0, gridView.getAdapter().getCount());
+    }
+
+    @Test
+    public void captureCancelled_deletesPreCreatedFile() throws IOException {
+        SelfieMainActivity activity = createActivity();
+        GridView gridView = activity.findViewById(R.id.gridview);
+
+        File file = newCapturedFile(activity);
+        activity.currentFile = file;
+        assertTrue(file.exists());
+
+        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_CANCELED, null);
+
+        assertFalse("cancel must delete the pre-created file", file.exists());
+        assertEquals(0, gridView.getAdapter().getCount());
     }
 
     @Test
@@ -177,23 +211,12 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void capture_whenFileCreationFails_startsNothing() {
+    public void captureCancelled_withMissingFile_doesNotError() {
         SelfieMainActivity activity = createActivity();
-        registerCameraApp(activity);
-        File dir = activity.getExternalFilesDir(null);
-        assertNotNull(dir);
-
-        // Force createImageFile() -> File.createTempFile to throw IOException by making the
-        // target directory read-only. Skipped where the filesystem won't honour that (e.g. root).
-        boolean readOnly = dir.setWritable(false) && !dir.canWrite();
-        org.junit.Assume.assumeTrue("requires a read-only dir to force IOException", readOnly);
-        try {
-            shadowOf(activity).clickMenuItem(R.id.action_camera);
-            // The IOException is caught, currentFile stays null, so no capture is launched.
-            assertNull(shadowOf(activity).getNextStartedActivityForResult());
-        } finally {
-            dir.setWritable(true);
-        }
+        // currentFile set but never created: the exists() guard must short-circuit cleanly.
+        activity.currentFile = new File(activity.getExternalFilesDir(null), "ghost.jpg");
+        activity.onActivityResult(REQUEST_IMAGE_CAPTURE, Activity.RESULT_CANCELED, null);
+        assertNotNull(activity);
     }
 
     @Test
@@ -206,11 +229,7 @@ public class SelfieMainActivityTest {
 
     @Test
     public void contextMenuDelete_removesSelectedSelfie() throws IOException {
-        Context appContext = ApplicationProvider.getApplicationContext();
-        File storageDir = appContext.getExternalFilesDir(null);
-        assertNotNull(storageDir);
-        File seed = new File(storageDir, "selfie_seed.jpg");
-        assertTrue(seed.createNewFile());
+        File seed = seedSelfie("selfie_seed.jpg");
 
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);
@@ -237,10 +256,7 @@ public class SelfieMainActivityTest {
 
     @Test
     public void tappingGridItem_opensFullScreenWithFilenameExtra() throws IOException {
-        Context appContext = ApplicationProvider.getApplicationContext();
-        File storageDir = appContext.getExternalFilesDir(null);
-        assertNotNull(storageDir);
-        assertTrue(new File(storageDir, "selfie_seed.jpg").createNewFile());
+        seedSelfie("selfie_seed.jpg");
 
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);

@@ -43,7 +43,7 @@ public class SelfieMainActivity extends AppCompatActivity {
     private static final int REQUEST_POST_NOTIFICATIONS = 2;
     private static final int TWO_MINS = 60 * 1000 * 2;
     private final List<Uri> picturePaths = new ArrayList<>();
-    private File currentFile;
+    File currentFile; // package-private for tests
     private ImageAdapter imageAdapter;
     private int selectedPosition;
 
@@ -124,13 +124,7 @@ public class SelfieMainActivity extends AppCompatActivity {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            try {
-                currentFile = createImageFile();
-            } catch (IOException ex) {
-                currentFile = null;
-                Toast.makeText(this, "Problem creating file in external storage: " + ex.getMessage(),
-                        Toast.LENGTH_SHORT).show();
-            }
+            currentFile = createImageFile(getExternalFilesDir(null));
             // Continue only if the file was successfully created
             if (currentFile != null) {
                 // Modern Android forbids handing a raw file:// Uri to another app; share via FileProvider.
@@ -143,13 +137,18 @@ public class SelfieMainActivity extends AppCompatActivity {
     }
 
     /**
-     * Create the image file which is needed for camera to write into
-     * @return the File object
+     * Create the pre-emptive image file the camera writes into, or {@code null} if it could not be
+     * created. Package-private and {@code storageDir}-parameterised so the failure path is unit-testable.
      */
-    private File createImageFile() throws IOException {
-        String imageFileName = SelfieStorage.buildImageFileName(new Date());
-        File storageDir = getExternalFilesDir(null);
-        return File.createTempFile(imageFileName, SelfieStorage.FILE_SUFFIX, storageDir);
+    File createImageFile(File storageDir) {
+        try {
+            String imageFileName = SelfieStorage.buildImageFileName(new Date());
+            return File.createTempFile(imageFileName, SelfieStorage.FILE_SUFFIX, storageDir);
+        } catch (IOException ex) {
+            Toast.makeText(this, "Problem creating file in external storage: " + ex.getMessage(),
+                    Toast.LENGTH_SHORT).show();
+            return null;
+        }
     }
 
     /**
