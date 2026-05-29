@@ -42,13 +42,17 @@ import java.util.List;
 public class SelfieMainActivity extends AppCompatActivity {
 
     public static final String FILENAME_EXTRA = "filename";
-    private static final int REQUEST_IMAGE_CAPTURE = 1;
     private static final int REQUEST_POST_NOTIFICATIONS = 2;
     private static final int TWO_MINS = 60 * 1000 * 2;
     final List<Uri> picturePaths = new ArrayList<>(); // package-private for tests
     File currentFile; // package-private for tests
     private ImageAdapter imageAdapter;
     private int selectedPosition;
+
+    // Modern replacement for startActivityForResult/onActivityResult. Registered at construction
+    // (allowed before STARTED); the callback is a method reference, so there's no synthetic lambda body.
+    private final ActivityResultLauncher<Intent> cameraLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this::onCaptureResult);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -154,10 +158,6 @@ public class SelfieMainActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     *  Callback function once camera has been closed
-     *  (either successful shot, or cancelled)
-     */
     /**
      * Result callback for the camera capture launcher (replaces onActivityResult).
      * Package-private so unit tests can invoke it directly.
