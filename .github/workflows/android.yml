@@ -30,8 +30,8 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
 
-      - name: Run unit tests
-        run: ./gradlew test --stacktrace
+      - name: Unit tests + coverage gate (98% line / 90% branch)
+        run: ./gradlew jacocoTestCoverageVerification jacocoTestReport --stacktrace
 
       - name: Run Android Lint
         run: ./gradlew lint --stacktrace
@@ -42,6 +42,14 @@ jobs:
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: app/build/reports/jacoco/jacocoTestReport/
           if-no-files-found: ignore
 
       - name: Upload lint report
