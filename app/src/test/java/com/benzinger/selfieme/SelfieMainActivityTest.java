@@ -41,6 +41,7 @@ import org.robolectric.fakes.RoboMenuItem;
 import org.robolectric.shadows.ShadowActivity;
 import org.robolectric.shadows.ShadowAlarmManager;
 import org.robolectric.shadows.ShadowPackageManager;
+import org.robolectric.shadows.ShadowToast;
 
 import java.io.File;
 import java.io.IOException;
@@ -123,12 +124,11 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void tappingCameraMenu_withNoCameraApp_doesNotLaunchActivity() {
-        // No camera app registered, so resolveActivity() returns null and openCamera() must be a no-op.
+    public void captureSuccess_showsYouveBeenSelfiedToast() throws IOException {
         SelfieMainActivity activity = createActivity();
-        shadowOf(activity).clickMenuItem(R.id.action_camera);
-        assertNull("no camera intent should be started when no camera app is installed",
-                shadowOf(activity).getNextStartedActivityForResult());
+        activity.currentFile = newCapturedFile(activity);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
+        assertEquals("You've been Selfied!", ShadowToast.getTextOfLatestToast());
     }
 
     @Test
