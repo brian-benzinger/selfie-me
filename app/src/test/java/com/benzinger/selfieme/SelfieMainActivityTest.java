@@ -200,6 +200,14 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void captureCancelled_showsCancelledShotToast() throws IOException {
+        SelfieMainActivity activity = createActivity();
+        activity.currentFile = newCapturedFile(activity);
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_CANCELED, null));
+        assertEquals("Cancelled the shot", ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
     public void captureCancelled_deletesPreCreatedFile() throws IOException {
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);

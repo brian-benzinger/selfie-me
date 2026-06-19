@@ -41,6 +41,8 @@ public class AlarmReceiverTest {
         assertEquals(1, posted.size());
 
         Notification notification = posted.get(0);
+        assertEquals("New Selfie Notification",
+                notification.extras.getString(Notification.EXTRA_TITLE));
         assertEquals("Time For A New Selfie!",
                 notification.extras.getString(Notification.EXTRA_TEXT));
         // Tapping the notification must reopen the app.
