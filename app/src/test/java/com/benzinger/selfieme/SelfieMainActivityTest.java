@@ -203,10 +203,16 @@ public class SelfieMainActivityTest {
     @Test
     public void captureCancelled_withMissingFile_doesNotError() {
         SelfieMainActivity activity = createActivity();
+        GridView gridView = activity.findViewById(R.id.gridview);
         // currentFile set but never created: the exists() guard must short-circuit cleanly.
-        activity.currentFile = new File(activity.getExternalFilesDir(null), "ghost.jpg");
+        File ghost = new File(activity.getExternalFilesDir(null), "ghost.jpg");
+        activity.currentFile = ghost;
+
         activity.onCaptureResult(new ActivityResult(Activity.RESULT_CANCELED, null));
-        assertNotNull(activity);
+
+        assertFalse("file that never existed should still not exist after cancel", ghost.exists());
+        assertEquals("no photo should be added to the grid when cancel has a missing file",
+                0, gridView.getAdapter().getCount());
     }
 
     @Test
@@ -241,7 +247,8 @@ public class SelfieMainActivityTest {
     public void tappingGridItem_opensFullScreenWithFilenameExtra() {
         SelfieMainActivity activity = createActivity();
         // Populate after setup() to avoid the layout-with-items NPE noted above.
-        activity.picturePaths.add(Uri.fromFile(new File(activity.getExternalFilesDir(null), "selfie_seed.jpg")));
+        File selfieFile = new File(activity.getExternalFilesDir(null), "selfie_seed.jpg");
+        activity.picturePaths.add(Uri.fromFile(selfieFile));
         GridView gridView = activity.findViewById(R.id.gridview);
 
         gridView.performItemClick(null, 0, 0);
@@ -249,7 +256,8 @@ public class SelfieMainActivityTest {
         Intent started = shadowOf(activity).getNextStartedActivity();
         assertNotNull(started);
         assertEquals(FullScreenPicActivity.class.getName(), started.getComponent().getClassName());
-        assertTrue(started.hasExtra(SelfieMainActivity.FILENAME_EXTRA));
+        assertEquals("FILENAME_EXTRA must carry the file path of the tapped selfie",
+                selfieFile.getAbsolutePath(), started.getStringExtra(SelfieMainActivity.FILENAME_EXTRA));
     }
 
     @Test
