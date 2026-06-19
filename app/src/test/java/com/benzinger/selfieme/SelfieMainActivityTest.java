@@ -24,6 +24,7 @@ import android.widget.AdapterView;
 import android.widget.GridView;
 
 import androidx.activity.result.ActivityResult;
+import androidx.core.content.FileProvider;
 import androidx.test.core.app.ApplicationProvider;
 
 import com.benzinger.selfieme.adapters.ImageAdapter;
@@ -33,6 +34,8 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.annotation.Implementation;
+import org.robolectric.annotation.Implements;
 import org.robolectric.fakes.RoboMenu;
 import org.robolectric.fakes.RoboMenuItem;
 import org.robolectric.shadows.ShadowActivity;
@@ -97,6 +100,7 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    @Config(shadows = {SelfieMainActivityTest.StubFileProvider.class})
     public void tappingCameraMenu_launchesImageCaptureWithOutput() {
         SelfieMainActivity activity = createActivity();
         registerCameraApp(activity);
@@ -300,6 +304,20 @@ public class SelfieMainActivityTest {
         @Override
         public void clearHeader() {
             // no-op
+        }
+    }
+
+    /**
+     * Replaces {@link FileProvider#getUriForFile} so the camera-intent test does not depend on
+     * FileProvider's canonical-path matching, which fails on Windows in Robolectric's temp-dir
+     * environment. The test only cares that a {@code content://} URI is placed in EXTRA_OUTPUT;
+     * it does not inspect the URI value.
+     */
+    @Implements(FileProvider.class)
+    static final class StubFileProvider {
+        @Implementation
+        public static Uri getUriForFile(Context context, String authority, File file) {
+            return Uri.parse("content://" + authority + "/" + Uri.encode(file.getName()));
         }
     }
 }
