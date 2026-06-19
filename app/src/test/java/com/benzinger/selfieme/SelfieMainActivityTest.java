@@ -44,6 +44,7 @@ import org.robolectric.shadows.ShadowPackageManager;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 
 /** Lifecycle / wiring tests for {@link SelfieMainActivity} driven by Robolectric. */
 @RunWith(RobolectricTestRunner.class)
@@ -119,6 +120,28 @@ public class SelfieMainActivityTest {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onOptionsItemSelected(new RoboMenuItem(android.R.id.home));
         assertFalse(handled);
+    }
+
+    @Test
+    public void tappingCameraMenu_withNoCameraApp_doesNotLaunchActivity() {
+        // No camera app registered, so resolveActivity() returns null and openCamera() must be a no-op.
+        SelfieMainActivity activity = createActivity();
+        shadowOf(activity).clickMenuItem(R.id.action_camera);
+        assertNull("no camera intent should be started when no camera app is installed",
+                shadowOf(activity).getNextStartedActivityForResult());
+    }
+
+    @Test
+    @Config(sdk = 33)
+    public void onCreate_tiramisu_withPermissionNotGranted_requestsNotificationPermission() {
+        // POST_NOTIFICATIONS is denied by default in Robolectric; the activity must call requestPermissions.
+        SelfieMainActivity activity = createActivity();
+        ShadowActivity.PermissionsRequest requested = shadowOf(activity).getLastRequestedPermission();
+        assertNotNull("requestPermissions must be called on API 33 when POST_NOTIFICATIONS is not granted",
+                requested);
+        assertTrue("POST_NOTIFICATIONS must be among the requested permissions",
+                Arrays.asList(requested.requestedPermissions)
+                        .contains(Manifest.permission.POST_NOTIFICATIONS));
     }
 
     @Test
