@@ -57,19 +57,22 @@ public final class SelfieStorage {
     }
 
     /**
-     * Deletes the file referenced by a {@code file://} {@code uri}, resolved against
-     * {@code storageDir} by its last path segment. Returns true only when a matching file
-     * existed and was deleted; non-{@code file} schemes and missing files return false.
+     * Deletes the file referenced by a {@code file://} {@code uri}. Returns true only when the
+     * file existed and was deleted; non-{@code file} schemes and missing files return false.
+     * {@code storageDir} is accepted for API symmetry with {@link #loadSelfies} but the path is
+     * resolved directly from the URI rather than via the directory, which is more robust across
+     * file-system implementations (including Robolectric on Windows where
+     * {@link Uri#getLastPathSegment()} may return a full platform path instead of a bare filename).
      */
     public static boolean deleteSelfie(File storageDir, Uri uri) {
         if (uri == null || !"file".equals(uri.getScheme())) {
             return false;
         }
-        String fileName = uri.getLastPathSegment();
-        if (fileName == null) {
+        String path = uri.getPath();
+        if (path == null || path.isEmpty()) {
             return false;
         }
-        File file = new File(storageDir, fileName);
+        File file = new File(path);
         return file.exists() && file.delete();
     }
 }

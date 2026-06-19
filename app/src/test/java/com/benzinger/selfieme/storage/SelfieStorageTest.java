@@ -108,7 +108,7 @@ public class SelfieStorageTest {
 
     @Test
     public void deleteSelfie_fileUriWithoutSegmentReturnsFalse() throws IOException {
-        // "file:///" has the file scheme but a null last path segment.
+        // "file:///" has the file scheme but resolves to the root "/", which cannot be deleted.
         assertFalse(SelfieStorage.deleteSelfie(tmp.newFolder(), Uri.parse("file:///")));
     }
 
