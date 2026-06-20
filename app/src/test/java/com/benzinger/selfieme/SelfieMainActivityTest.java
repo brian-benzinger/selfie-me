@@ -334,11 +334,15 @@ public class SelfieMainActivityTest {
 
     @Test
     public void onCreate_populatesGridFromExistingFiles() throws IOException {
-        // Seed a selfie into the shared external-files directory BEFORE the activity starts so
-        // that loadPics() picks it up. This tests the core startup flow: existing selfies must
-        // appear in the grid without any user action — without this, the app would show an empty
-        // grid even if the user had previously taken selfies.
-        File seeded = seedSelfie("selfie_preexisting.jpg");
+        // Robolectric only mounts external storage as part of activity setup, so
+        // ApplicationProvider.getApplicationContext().getExternalFilesDir(null) returns null
+        // before any activity has started. Use a bootstrap activity to obtain a valid dir,
+        // write the selfie into it, then start the real test activity and assert loadPics()
+        // found the file — verifying the core startup flow end-to-end.
+        File externalDir = createActivity().getExternalFilesDir(null);
+        assertNotNull("test precondition: external storage must be available", externalDir);
+        File seeded = new File(externalDir, "selfie_preexisting.jpg");
+        java.nio.file.Files.write(seeded.toPath(), ONE_PX_PNG);
 
         SelfieMainActivity activity = createActivity();
 
