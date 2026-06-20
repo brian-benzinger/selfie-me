@@ -11,6 +11,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Application;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -28,6 +29,7 @@ import androidx.core.content.FileProvider;
 import androidx.test.core.app.ApplicationProvider;
 
 import com.benzinger.selfieme.adapters.ImageAdapter;
+import com.benzinger.selfieme.receivers.AlarmReceiver;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,6 +43,7 @@ import org.robolectric.fakes.RoboMenuItem;
 import org.robolectric.shadows.ShadowActivity;
 import org.robolectric.shadows.ShadowAlarmManager;
 import org.robolectric.shadows.ShadowPackageManager;
+import org.robolectric.shadows.ShadowPendingIntent;
 import org.robolectric.shadows.ShadowToast;
 
 import java.io.File;
@@ -99,6 +102,23 @@ public class SelfieMainActivityTest {
         assertNotNull("expected createAlarm() to register a repeating alarm", alarm);
         assertEquals(AlarmManager.ELAPSED_REALTIME_WAKEUP, alarm.type);
         assertEquals(60 * 1000 * 2, alarm.interval); // TWO_MINS
+    }
+
+    @Test
+    public void onCreate_alarmPendingIntentTargetsAlarmReceiverWithImmutableFlag() {
+        // CLAUDE.md contracts: alarm uses an explicit intent to AlarmReceiver, and every PendingIntent
+        // carries FLAG_IMMUTABLE (required from API 31+).
+        SelfieMainActivity activity = createActivity();
+        AlarmManager alarmManager = (AlarmManager) activity.getSystemService(Context.ALARM_SERVICE);
+        ShadowAlarmManager.ScheduledAlarm alarm = shadowOf(alarmManager).getNextScheduledAlarm();
+        assertNotNull(alarm);
+
+        ShadowPendingIntent shadowOp = shadowOf(alarm.operation);
+        assertEquals("alarm PendingIntent must target AlarmReceiver explicitly",
+                AlarmReceiver.class.getName(),
+                shadowOp.getSavedIntent().getComponent().getClassName());
+        assertTrue("alarm PendingIntent must carry FLAG_IMMUTABLE (required from API 31+)",
+                (shadowOp.getSavedFlags() & PendingIntent.FLAG_IMMUTABLE) != 0);
     }
 
     @Test
