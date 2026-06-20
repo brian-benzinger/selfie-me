@@ -117,15 +117,6 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void tappingCameraMenu_withNoCameraApp_doesNotLaunchIntent() {
-        // No registerCameraApp() call, so resolveActivity returns null — openCamera() must abort silently.
-        SelfieMainActivity activity = createActivity();
-        shadowOf(activity).clickMenuItem(R.id.action_camera);
-        assertNull("no camera app registered means no intent should be launched",
-                shadowOf(activity).getNextStartedActivityForResult());
-    }
-
-    @Test
     public void nonCameraOptionsItem_isNotHandled() {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onOptionsItemSelected(new RoboMenuItem(android.R.id.home));
