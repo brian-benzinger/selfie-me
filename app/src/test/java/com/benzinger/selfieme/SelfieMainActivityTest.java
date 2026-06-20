@@ -334,23 +334,23 @@ public class SelfieMainActivityTest {
 
     @Test
     public void onCreate_populatesGridFromExistingFiles() throws IOException {
-        // Robolectric mounts external storage as part of the activity lifecycle, so
-        // ApplicationProvider.getApplicationContext().getExternalFilesDir(null) returns null
-        // before any activity has started. A bootstrap controller is created and fully torn
-        // down (pause → stop → destroy) to initialize the dir and release all global state
-        // before the real test activity is built, avoiding Robolectric conflicts from two
-        // simultaneous active-activity instances.
-        var bootstrap = Robolectric.buildActivity(SelfieMainActivity.class).setup();
-        File externalDir = bootstrap.get().getExternalFilesDir(null);
-        bootstrap.pause().stop().destroy();
+        // External storage is only initialized as part of the activity lifecycle, so we
+        // start the activity once (empty dir), seed a selfie file while the controller is
+        // live, then call recreate() — a single-controller recreation that exercises the
+        // exact same onCreate()/loadPics() code path as a fresh start without the
+        // two-simultaneous-ActivityController NPE that plagued the two-instance approach.
+        var ctrl = Robolectric.buildActivity(SelfieMainActivity.class).setup();
+        File externalDir = ctrl.get().getExternalFilesDir(null);
         assertNotNull("test precondition: external storage must be available", externalDir);
         File seeded = new File(externalDir, "selfie_preexisting.jpg");
         java.nio.file.Files.write(seeded.toPath(), ONE_PX_PNG);
 
-        // The real test: a fresh activity must surface the pre-existing selfie via loadPics().
-        SelfieMainActivity activity = createActivity();
+        // recreate() destroys the current instance and re-runs onCreate()/loadPics() on a
+        // fresh one; ctrl.get() returns the new instance afterwards.
+        ctrl.recreate();
+
         assertTrue("selfie already on disk must be loaded into the grid on startup",
-                activity.picturePaths.contains(Uri.fromFile(seeded)));
+                ctrl.get().picturePaths.contains(Uri.fromFile(seeded)));
     }
 
     /**
