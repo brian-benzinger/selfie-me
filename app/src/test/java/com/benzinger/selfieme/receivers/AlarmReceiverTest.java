@@ -80,5 +80,6 @@ public class AlarmReceiverTest {
         NotificationChannel channel = notificationManager.getNotificationChannel(AlarmReceiver.CHANNEL_ID);
         assertEquals("Selfie Reminders", channel.getName().toString());
         assertEquals(NotificationManager.IMPORTANCE_DEFAULT, channel.getImportance());
+        assertEquals("Reminders to take a new selfie", channel.getDescription());
     }
 }

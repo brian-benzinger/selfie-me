@@ -133,6 +133,8 @@ public class SelfieMainActivityTest {
         assertEquals(MediaStore.ACTION_IMAGE_CAPTURE, started.intent.getAction());
         assertTrue("camera intent must request output via EXTRA_OUTPUT",
                 started.intent.hasExtra(MediaStore.EXTRA_OUTPUT));
+        assertTrue("camera intent must grant write permission via FLAG_GRANT_WRITE_URI_PERMISSION",
+                (started.intent.getFlags() & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0);
     }
 
     @Test
