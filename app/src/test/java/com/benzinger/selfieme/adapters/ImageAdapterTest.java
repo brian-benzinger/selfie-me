@@ -62,6 +62,10 @@ public class ImageAdapterTest {
         assertEquals(ImageView.ScaleType.CENTER_CROP, imageView.getScaleType());
         assertEquals(100, imageView.getLayoutParams().width);
         assertEquals(100, imageView.getLayoutParams().height);
+        assertEquals(2, imageView.getPaddingLeft());
+        assertEquals(2, imageView.getPaddingTop());
+        assertEquals(2, imageView.getPaddingRight());
+        assertEquals(2, imageView.getPaddingBottom());
     }
 
     @Test
