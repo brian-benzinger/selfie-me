@@ -5,17 +5,21 @@ import static org.junit.Assert.assertNotNull;
 import static org.robolectric.Shadows.shadowOf;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 
 import androidx.test.core.app.ApplicationProvider;
 
+import com.benzinger.selfieme.SelfieMainActivity;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.shadows.ShadowNotificationManager;
+import org.robolectric.shadows.ShadowPendingIntent;
 
 import java.util.List;
 
@@ -55,5 +59,26 @@ public class AlarmReceiverTest {
 
         // Query the real (public) NotificationManager API — the shadow's accessor is protected.
         assertNotNull(notificationManager.getNotificationChannel(AlarmReceiver.CHANNEL_ID));
+    }
+
+    @Test
+    public void onReceive_contentIntentTargetsSelfieMainActivity() {
+        new AlarmReceiver().onReceive(context, new Intent());
+
+        Notification notification = shadowOf(notificationManager).getAllNotifications().get(0);
+        ShadowPendingIntent shadowPendingIntent = shadowOf(notification.contentIntent);
+        Intent tapIntent = shadowPendingIntent.getSavedIntent();
+        assertEquals("notification tap must reopen SelfieMainActivity",
+                SelfieMainActivity.class.getName(),
+                tapIntent.getComponent().getClassName());
+    }
+
+    @Test
+    public void onReceive_channelHasCorrectNameAndImportance() {
+        new AlarmReceiver().onReceive(context, new Intent());
+
+        NotificationChannel channel = notificationManager.getNotificationChannel(AlarmReceiver.CHANNEL_ID);
+        assertEquals("Selfie Reminders", channel.getName().toString());
+        assertEquals(NotificationManager.IMPORTANCE_DEFAULT, channel.getImportance());
     }
 }
