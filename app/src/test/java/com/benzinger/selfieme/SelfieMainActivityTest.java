@@ -332,6 +332,20 @@ public class SelfieMainActivityTest {
                 shadowOf(activity).getLastRequestedPermission());
     }
 
+    @Test
+    public void onCreate_populatesGridFromExistingFiles() throws IOException {
+        // Seed a selfie into the shared external-files directory BEFORE the activity starts so
+        // that loadPics() picks it up. This tests the core startup flow: existing selfies must
+        // appear in the grid without any user action — without this, the app would show an empty
+        // grid even if the user had previously taken selfies.
+        File seeded = seedSelfie("selfie_preexisting.jpg");
+
+        SelfieMainActivity activity = createActivity();
+
+        assertTrue("selfie already on disk must be loaded into the grid on startup",
+                activity.picturePaths.contains(Uri.fromFile(seeded)));
+    }
+
     /**
      * {@link RoboMenu} only implements {@link android.view.Menu}; {@code onCreateContextMenu}
      * needs a {@link ContextMenu}. This fake adds the no-op header methods so the activity's
