@@ -10,6 +10,7 @@ import static org.robolectric.Shadows.shadowOf;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
@@ -118,6 +119,8 @@ public class SelfieMainActivityTest {
         assertEquals("alarm intent must explicitly target AlarmReceiver",
                 AlarmReceiver.class.getName(),
                 shadowOp.getSavedIntent().getComponent().getClassName());
+        assertTrue("alarm PendingIntent must set FLAG_IMMUTABLE (required from API 31+)",
+                (shadowOp.getFlags() & PendingIntent.FLAG_IMMUTABLE) != 0);
     }
 
     @Test

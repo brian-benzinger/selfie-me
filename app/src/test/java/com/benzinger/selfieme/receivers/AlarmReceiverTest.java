@@ -7,6 +7,7 @@ import static org.robolectric.Shadows.shadowOf;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 
@@ -71,6 +72,8 @@ public class AlarmReceiverTest {
         assertEquals("notification tap must reopen SelfieMainActivity",
                 SelfieMainActivity.class.getName(),
                 tapIntent.getComponent().getClassName());
+        assertTrue("notification contentIntent must set FLAG_IMMUTABLE (required from API 31+)",
+                (shadowPendingIntent.getFlags() & PendingIntent.FLAG_IMMUTABLE) != 0);
     }
 
     @Test
