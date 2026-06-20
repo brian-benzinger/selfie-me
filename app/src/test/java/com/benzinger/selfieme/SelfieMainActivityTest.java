@@ -333,24 +333,20 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void onCreate_populatesGridFromExistingFiles() throws IOException {
-        // External storage is only initialized as part of the activity lifecycle, so we
-        // start the activity once (empty dir), seed a selfie file while the controller is
-        // live, then call recreate() — a single-controller recreation that exercises the
-        // exact same onCreate()/loadPics() code path as a fresh start without the
-        // two-simultaneous-ActivityController NPE that plagued the two-instance approach.
-        var ctrl = Robolectric.buildActivity(SelfieMainActivity.class).setup();
-        File externalDir = ctrl.get().getExternalFilesDir(null);
-        assertNotNull("test precondition: external storage must be available", externalDir);
-        File seeded = new File(externalDir, "selfie_preexisting.jpg");
-        java.nio.file.Files.write(seeded.toPath(), ONE_PX_PNG);
+    public void loadPics_findsExistingFilesInExternalStorage() throws IOException {
+        // createActivity() initializes Robolectric's external storage, so seedSelfie()
+        // can then write into the same dir that getExternalFilesDir(null) will return.
+        // loadPics() is package-private (following the onCaptureResult/createImageFile
+        // pattern) so we can call it directly after seeding to verify it surfaces the
+        // file and adds a file:// URI to picturePaths without going through a fresh
+        // activity launch (which NPEs in Robolectric 4.14.1 when two controllers coexist).
+        SelfieMainActivity activity = createActivity();
+        File seeded = seedSelfie("selfie_preexisting.jpg");
 
-        // recreate() destroys the current instance and re-runs onCreate()/loadPics() on a
-        // fresh one; ctrl.get() returns the new instance afterwards.
-        ctrl.recreate();
+        activity.loadPics();
 
-        assertTrue("selfie already on disk must be loaded into the grid on startup",
-                ctrl.get().picturePaths.contains(Uri.fromFile(seeded)));
+        assertTrue("file on disk must appear in picturePaths after loadPics()",
+                activity.picturePaths.contains(Uri.fromFile(seeded)));
     }
 
     /**

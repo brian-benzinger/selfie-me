@@ -118,7 +118,7 @@ public class SelfieMainActivity extends AppCompatActivity {
     /**
      * Initially load all pics in the private storage directory into the list
      */
-    private void loadPics() {
+    void loadPics() {
         // SelfieStorage tolerates a null directory (returns the list unchanged).
         SelfieStorage.loadSelfies(getExternalFilesDir(null), picturePaths);
     }
