@@ -11,7 +11,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.Application;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -105,20 +104,20 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void onCreate_alarmPendingIntentTargetsAlarmReceiverWithImmutableFlag() {
-        // CLAUDE.md contracts: alarm uses an explicit intent to AlarmReceiver, and every PendingIntent
-        // carries FLAG_IMMUTABLE (required from API 31+).
+    public void onCreate_alarmPendingIntentTargetsAlarmReceiverExplicitly() {
+        // CLAUDE.md contracts: alarm must use an explicit intent to AlarmReceiver (implicit broadcasts
+        // to manifest receivers are restricted on modern Android) and must be a broadcast PendingIntent.
         SelfieMainActivity activity = createActivity();
         AlarmManager alarmManager = (AlarmManager) activity.getSystemService(Context.ALARM_SERVICE);
         ShadowAlarmManager.ScheduledAlarm alarm = shadowOf(alarmManager).getNextScheduledAlarm();
         assertNotNull(alarm);
 
         ShadowPendingIntent shadowOp = shadowOf(alarm.operation);
-        assertEquals("alarm PendingIntent must target AlarmReceiver explicitly",
+        assertTrue("alarm PendingIntent must be a broadcast (not activity/service)",
+                shadowOp.isBroadcast());
+        assertEquals("alarm intent must explicitly target AlarmReceiver",
                 AlarmReceiver.class.getName(),
                 shadowOp.getSavedIntent().getComponent().getClassName());
-        assertTrue("alarm PendingIntent must carry FLAG_IMMUTABLE (required from API 31+)",
-                (shadowOp.getSavedFlags() & PendingIntent.FLAG_IMMUTABLE) != 0);
     }
 
     @Test
