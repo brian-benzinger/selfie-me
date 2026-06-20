@@ -141,6 +141,19 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void tappingCameraMenu_withNoCameraApp_doesNotStartActivity() {
+        // Do NOT call registerCameraApp — resolveActivity() returns null, so openCamera() must
+        // short-circuit without starting any intent. This guards the resolveActivity != null check
+        // that prevents a crash/FileUriExposedException when no camera is installed.
+        SelfieMainActivity activity = createActivity();
+
+        shadowOf(activity).clickMenuItem(R.id.action_camera);
+
+        assertNull("no camera app available must not start any intent for result",
+                shadowOf(activity).getNextStartedActivityForResult());
+    }
+
+    @Test
     public void nonCameraOptionsItem_isNotHandled() {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onOptionsItemSelected(new RoboMenuItem(android.R.id.home));
