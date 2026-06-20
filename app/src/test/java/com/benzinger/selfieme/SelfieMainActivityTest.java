@@ -117,6 +117,15 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void tappingCameraMenu_withNoCameraApp_doesNotLaunchIntent() {
+        // No registerCameraApp() call, so resolveActivity returns null — openCamera() must abort silently.
+        SelfieMainActivity activity = createActivity();
+        shadowOf(activity).clickMenuItem(R.id.action_camera);
+        assertNull("no camera app registered means no intent should be launched",
+                shadowOf(activity).getNextStartedActivityForResult());
+    }
+
+    @Test
     public void nonCameraOptionsItem_isNotHandled() {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onOptionsItemSelected(new RoboMenuItem(android.R.id.home));
@@ -162,6 +171,9 @@ public class SelfieMainActivityTest {
         // A non-existent directory makes File.createTempFile throw IOException, which is swallowed.
         File badDir = new File(activity.getExternalFilesDir(null), "missing-subdir");
         assertNull(activity.createImageFile(badDir));
+        // The error must be surfaced to the user via a Toast, not silently swallowed.
+        assertTrue("file creation error must show a storage-problem Toast",
+                ShadowToast.getTextOfLatestToast().startsWith("Problem creating file in external storage:"));
     }
 
     @Test
@@ -302,7 +314,10 @@ public class SelfieMainActivityTest {
     @Test
     @Config(sdk = 26)
     public void onCreate_belowTiramisu_doesNotRequestNotificationPermission() {
-        assertNotNull(createActivity());
+        SelfieMainActivity activity = createActivity();
+        assertNotNull(activity);
+        assertNull("below API 33 must not request POST_NOTIFICATIONS",
+                shadowOf(activity).getLastRequestedPermission());
     }
 
     /**
