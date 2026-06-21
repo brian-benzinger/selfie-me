@@ -323,10 +323,15 @@ public class SelfieMainActivityTest {
 
     @Test
     @Config(sdk = 33)
-    public void onCreate_tiramisu_withPermissionGranted_doesNotCrash() {
+    public void onCreate_tiramisu_withPermissionGranted_doesNotRequestNotificationPermission() {
+        // When the permission is already granted, requestPermissions must NOT be called — calling it
+        // again would show an unnecessary system dialog.
         Application app = (Application) ApplicationProvider.getApplicationContext();
         shadowOf(app).grantPermissions(Manifest.permission.POST_NOTIFICATIONS);
-        assertNotNull(createActivity());
+        SelfieMainActivity activity = createActivity();
+        assertNotNull(activity);
+        assertNull("must not re-request POST_NOTIFICATIONS when already granted",
+                shadowOf(activity).getLastRequestedPermission());
     }
 
     @Test
