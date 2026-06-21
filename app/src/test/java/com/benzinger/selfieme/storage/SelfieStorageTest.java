@@ -113,6 +113,30 @@ public class SelfieStorageTest {
     }
 
     @Test
+    public void loadSelfies_emptyDirectoryYieldsEmptyList() throws IOException {
+        // An existing but empty directory: listFiles() returns [] (not null), so the for-loop
+        // executes zero iterations — distinct from the null/non-directory cases.
+        File dir = tmp.newFolder();
+        assertTrue(SelfieStorage.loadSelfies(dir, null).isEmpty());
+    }
+
+    @Test
+    public void loadSelfies_urisReferenceActualFiles() throws IOException {
+        // loadSelfies must return file:// URIs that actually correspond to the seeded files,
+        // not just any URIs with the file scheme.
+        File dir = tmp.newFolder();
+        File a = new File(dir, "selfie_a.jpg");
+        File b = new File(dir, "selfie_b.jpg");
+        assertTrue(a.createNewFile());
+        assertTrue(b.createNewFile());
+
+        List<Uri> result = SelfieStorage.loadSelfies(dir, null);
+
+        assertTrue("URI for selfie_a.jpg must be in result", result.contains(Uri.fromFile(a)));
+        assertTrue("URI for selfie_b.jpg must be in result", result.contains(Uri.fromFile(b)));
+    }
+
+    @Test
     public void privateConstructor_isInvocable() throws Exception {
         // SelfieStorage is a stateless utility; exercising the hidden constructor keeps it covered.
         java.lang.reflect.Constructor<SelfieStorage> constructor =

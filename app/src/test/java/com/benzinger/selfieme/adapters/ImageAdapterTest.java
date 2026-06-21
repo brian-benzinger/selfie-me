@@ -5,6 +5,8 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -73,6 +75,15 @@ public class ImageAdapterTest {
         ImageView recycled = new ImageView(context);
         View view = adapter.getView(0, recycled, parent);
         assertSame(recycled, view);
+    }
+
+    @Test
+    public void getView_newView_hasBlackBackground() {
+        // setBackgroundColor(Color.BLACK) is called for fresh (non-recycled) views only.
+        View view = adapter.getView(0, null, parent);
+        ImageView imageView = (ImageView) view;
+        assertTrue(imageView.getBackground() instanceof ColorDrawable);
+        assertEquals(Color.BLACK, ((ColorDrawable) imageView.getBackground()).getColor());
     }
 
     @Test
