@@ -86,4 +86,16 @@ public class AlarmReceiverTest {
         assertEquals(NotificationManager.IMPORTANCE_DEFAULT, channel.getImportance());
         assertEquals("Reminders to take a new selfie", channel.getDescription());
     }
+
+    @Test
+    public void onReceive_notificationPostedOnReminderChannel() {
+        // Verifies the bridge between channel creation and notification posting: the notification
+        // must carry CHANNEL_ID so it is delivered on the channel that was just created. A mismatch
+        // here would make the notification invisible on real devices even though the channel exists.
+        new AlarmReceiver().onReceive(context, new Intent());
+
+        Notification notification = shadowOf(notificationManager).getAllNotifications().get(0);
+        assertEquals("notification must be posted on the selfie_reminders channel",
+                AlarmReceiver.CHANNEL_ID, notification.getChannelId());
+    }
 }
