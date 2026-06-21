@@ -141,6 +141,16 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void tappingCameraMenu_withNoCameraApp_doesNotLaunchIntent() {
+        // Robolectric registers no camera app by default, so resolveActivity() returns null;
+        // openCamera() must short-circuit without attempting to start any activity.
+        SelfieMainActivity activity = createActivity();
+        shadowOf(activity).clickMenuItem(R.id.action_camera);
+        assertNull("openCamera must not start an intent when no app handles ACTION_IMAGE_CAPTURE",
+                shadowOf(activity).getNextStartedActivityForResult());
+    }
+
+    @Test
     public void nonCameraOptionsItem_isNotHandled() {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onOptionsItemSelected(new RoboMenuItem(android.R.id.home));
@@ -223,6 +233,9 @@ public class SelfieMainActivityTest {
         GridView gridView = activity.findViewById(R.id.gridview);
         // No prior capture, so currentFile is null.
         activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
+        // The "You've been Selfied!" toast is shown unconditionally on RESULT_OK — even when
+        // currentFile is null — because the toast precedes the null guard.
+        assertEquals("You've been Selfied!", ShadowToast.getTextOfLatestToast());
         assertEquals(0, gridView.getAdapter().getCount());
     }
 
