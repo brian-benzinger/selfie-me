@@ -67,7 +67,3 @@ The entire app lives under `app/src/main/java/com/benzinger/selfieme/` and is bu
 - The intent extra key is the constant `SelfieMainActivity.FILENAME_EXTRA`; both activities reference it.
 - The alarm uses an **explicit** `Intent(this, AlarmReceiver.class)` (implicit broadcasts to manifest receivers are restricted on modern Android), and every `PendingIntent` is created with `FLAG_IMMUTABLE` (required from API 31+). Preserve both.
 - Photos are stored in app-private external storage (`getExternalFilesDir(null)`); no storage permission is needed (the old `WRITE_EXTERNAL_STORAGE` declaration was removed when minSdk moved past 18). The front camera is declared **required** via `<uses-feature>`.
-
-### Known discrepancy
-
-The README says the reminder fires "every minute," but the alarm interval constant is `TWO_MINS = 60*1000*2` (2 minutes). If touching the reminder cadence, reconcile the README, the constant, and its misleading name.
