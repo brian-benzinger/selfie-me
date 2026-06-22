@@ -73,8 +73,13 @@ public class ImageAdapterTest {
     @Test
     public void getView_recyclesConvertView() {
         ImageView recycled = new ImageView(context);
+        recycled.setBackgroundColor(Color.WHITE);
         View view = adapter.getView(0, recycled, parent);
         assertSame(recycled, view);
+        // setBackgroundColor(BLACK) is init-only for fresh views; recycled views must keep their
+        // existing background so callers can rely on the adapter not clobbering view state.
+        assertEquals("recycled view background must not be overwritten",
+                Color.WHITE, ((ColorDrawable) ((ImageView) view).getBackground()).getColor());
     }
 
     @Test
