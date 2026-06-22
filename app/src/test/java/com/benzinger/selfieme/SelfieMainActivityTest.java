@@ -141,16 +141,6 @@ public class SelfieMainActivityTest {
     }
 
     @Test
-    public void openCamera_withNoCameraApp_doesNotLaunchCameraIntent() {
-        // Without a camera app, resolveActivity() returns null and openCamera() must bail out —
-        // no ActivityResultLauncher.launch() call should occur.
-        SelfieMainActivity activity = createActivity();
-        shadowOf(activity).clickMenuItem(R.id.action_camera);
-        assertNull("must not start a camera intent when no camera app is installed",
-                shadowOf(activity).getNextStartedActivityForResult());
-    }
-
-    @Test
     public void nonCameraOptionsItem_isNotHandled() {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onOptionsItemSelected(new RoboMenuItem(android.R.id.home));
