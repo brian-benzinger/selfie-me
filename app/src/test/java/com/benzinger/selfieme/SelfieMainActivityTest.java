@@ -195,6 +195,13 @@ public class SelfieMainActivityTest {
         assertNotNull(created);
         assertTrue(created.exists());
         assertEquals(dir, created.getParentFile());
+        // CLAUDE.md contract: pre-created file must follow the selfie_<timestamp>_ naming scheme.
+        // If createImageFile switched to a different prefix or suffix, the camera flow would
+        // break (FullScreenPicActivity uses the path, deleteSelfie uses the URI). Verify both ends.
+        assertTrue("createImageFile must produce a file whose name starts with FILE_PREFIX",
+                created.getName().startsWith(SelfieStorage.FILE_PREFIX));
+        assertTrue("createImageFile must produce a file whose name ends with FILE_SUFFIX (.jpg)",
+                created.getName().endsWith(SelfieStorage.FILE_SUFFIX));
     }
 
     @Test
