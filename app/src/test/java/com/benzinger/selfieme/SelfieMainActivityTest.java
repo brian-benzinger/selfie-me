@@ -30,6 +30,7 @@ import androidx.test.core.app.ApplicationProvider;
 
 import com.benzinger.selfieme.adapters.ImageAdapter;
 import com.benzinger.selfieme.receivers.AlarmReceiver;
+import com.benzinger.selfieme.storage.SelfieStorage;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -138,6 +139,22 @@ public class SelfieMainActivityTest {
                 started.intent.hasExtra(MediaStore.EXTRA_OUTPUT));
         assertTrue("camera intent must grant write permission via FLAG_GRANT_WRITE_URI_PERMISSION",
                 (started.intent.getFlags() & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) != 0);
+        // CLAUDE.md contract: EXTRA_OUTPUT must use a content:// FileProvider URI, never a raw file://.
+        Uri outputUri = started.intent.getParcelableExtra(MediaStore.EXTRA_OUTPUT, Uri.class);
+        assertNotNull(outputUri);
+        assertEquals("EXTRA_OUTPUT must use content:// URI (FileProvider), not a raw file:// URI",
+                "content", outputUri.getScheme());
+        // openCamera() must pre-create currentFile so the camera has a concrete path to write to.
+        assertNotNull("openCamera() must assign currentFile before launching the camera",
+                activity.currentFile);
+        assertTrue("pre-created currentFile must exist on disk before the camera is launched",
+                activity.currentFile.exists());
+        assertEquals("pre-created file must live in the app's external files dir",
+                activity.getExternalFilesDir(null), activity.currentFile.getParentFile());
+        assertTrue("pre-created file name must start with the selfie_ prefix",
+                activity.currentFile.getName().startsWith(SelfieStorage.FILE_PREFIX));
+        assertTrue("pre-created file name must end with .jpg",
+                activity.currentFile.getName().endsWith(SelfieStorage.FILE_SUFFIX));
     }
 
     @Test
