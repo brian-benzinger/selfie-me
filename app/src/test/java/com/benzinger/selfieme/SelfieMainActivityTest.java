@@ -221,6 +221,25 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void captureSuccess_addsFileUriForCapturedFile() throws IOException {
+        // CLAUDE.md contract: "the list/display path uses file:// URIs". onCaptureResult must add
+        // Uri.fromFile(currentFile) — a file:// URI — not a content:// URI or any other form.
+        // If the scheme were wrong, FullScreenPicActivity.getPath() and deleteSelfie's scheme check
+        // would silently break in production even though the count-only test still passes.
+        SelfieMainActivity activity = createActivity();
+        File capturedFile = newCapturedFile(activity);
+        activity.currentFile = capturedFile;
+
+        activity.onCaptureResult(new ActivityResult(Activity.RESULT_OK, null));
+
+        Uri addedUri = activity.picturePaths.get(activity.picturePaths.size() - 1);
+        assertEquals("captured URI must use the file:// scheme (CLAUDE.md display contract)",
+                "file", addedUri.getScheme());
+        assertEquals("captured URI path must match the captured file",
+                capturedFile.getAbsolutePath(), addedUri.getPath());
+    }
+
+    @Test
     public void captureSuccess_doesNotAddSamePhotoTwice() throws IOException {
         SelfieMainActivity activity = createActivity();
         GridView gridView = activity.findViewById(R.id.gridview);
