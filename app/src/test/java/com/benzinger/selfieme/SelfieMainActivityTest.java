@@ -315,6 +315,33 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void contextMenuDelete_removesItemAtCorrectPosition() throws IOException {
+        // The existing delete test always uses position 0. This test verifies that
+        // selectedPosition (set by onCreateContextMenu) drives the delete correctly when
+        // a non-zero position is long-pressed — deleting seed2 at position 1 must leave
+        // seed1 at position 0 untouched. A bug that hardcodes position 0 would pass the
+        // existing test but fail here.
+        SelfieMainActivity activity = createActivity();
+        File seed1 = seedSelfie("selfie_pos0.jpg");
+        File seed2 = seedSelfie("selfie_pos1.jpg");
+        activity.picturePaths.add(Uri.fromFile(seed1));
+        activity.picturePaths.add(Uri.fromFile(seed2));
+        GridView gridView = activity.findViewById(R.id.gridview);
+
+        FakeContextMenu menu = new FakeContextMenu(activity);
+        AdapterView.AdapterContextMenuInfo info = new AdapterView.AdapterContextMenuInfo(gridView, 1, 1);
+        activity.onCreateContextMenu(menu, gridView, info);
+        boolean handled = activity.onContextItemSelected(new RoboMenuItem(R.id.delete_pic));
+
+        assertTrue(handled);
+        assertEquals("only one selfie must remain after deleting position 1", 1, activity.picturePaths.size());
+        assertTrue("seed1 at position 0 must still exist on disk", seed1.exists());
+        assertFalse("seed2 at position 1 must be deleted from disk", seed2.exists());
+        assertEquals("remaining picturePath must reference seed1",
+                Uri.fromFile(seed1), activity.picturePaths.get(0));
+    }
+
+    @Test
     public void contextMenu_unknownItem_isNotHandled() {
         SelfieMainActivity activity = createActivity();
         boolean handled = activity.onContextItemSelected(new RoboMenuItem(R.id.action_camera));
