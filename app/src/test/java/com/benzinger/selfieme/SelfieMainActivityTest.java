@@ -165,6 +165,20 @@ public class SelfieMainActivityTest {
     }
 
     @Test
+    public void noCameraApp_doesNotCreatePreCaptureFile() {
+        // Without registerCameraApp(), resolveActivity() returns null for ACTION_IMAGE_CAPTURE.
+        // openCamera() must short-circuit at the guard: currentFile must stay null because
+        // createImageFile() is never reached. Null currentFile also proves cameraLauncher.launch()
+        // was not called (it is gated on currentFile != null).
+        SelfieMainActivity activity = createActivity();
+
+        activity.onOptionsItemSelected(new RoboMenuItem(R.id.action_camera));
+
+        assertNull("currentFile must remain null when no camera app resolves ACTION_IMAGE_CAPTURE",
+                activity.currentFile);
+    }
+
+    @Test
     public void captureSuccess_showsYouveBeenSelfiedToast() throws IOException {
         SelfieMainActivity activity = createActivity();
         activity.currentFile = newCapturedFile(activity);
